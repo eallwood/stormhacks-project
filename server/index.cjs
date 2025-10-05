@@ -1,0 +1,128 @@
+// server/index.js
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fetch = require('node-fetch');
+
+// Explicitly load the .env file from the project root
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
+if (!process.env.GEMINI_API_KEY) {
+  console.error('\n[FATAL ERROR] GEMINI_API_KEY not found. Server cannot start.');
+  process.exit(1);
+}
+
+const app = express();
+const port = 3001; // You can use any port
+
+app.use(cors());
+app.use(express.json());
+
+
+// The list of plants you want Gemini to choose from
+const plantList = [
+  'Wild Rose (Rosa acicularis)',
+  'Red Columbine (Aquilegia formosa)',
+  'Sword Fern (Polystichum munitum)',
+  'Kinnikinnick (Arctostaphylos uva-ursi)',
+  //'Oregon Grape (Mahonia aquifolium)',
+  'Salmonberry (Rubus spectabilis)',
+  //'Douglas Aster (Symphyotrichum subspicatum)',
+  'Western Trillium (Trillium ovatum)',
+  //'Nootka Rose (Rosa nutkana)',
+ // 'Pacific Bleeding Heart (Dicentra formosa)',
+  //'Mock Orange (Philadelphus lewisii)',
+  //'Snowberry (Symphoricarpos albus)',
+  'Yarrow (Achillea millefolium)',
+  //'Evergreen Huckleberry (Vaccinium ovatum)',
+  //'Lupine (Lupinus polyphyllus)',
+  //'Red Flowering Currant (Ribes sanguineum)',
+  //'Bleeding Heart Vine (Clerodendrum thomsoniae)',
+  //'Ferns (Athyrium filix-femina)',
+  //'Camassia (Camassia quamash)',
+  //'Vanilla Leaf (Achlys triphylla)',
+  //'Indian Plum (Oemleria cerasiformis)',
+  //'Twinflower (Linnaea borealis)',
+  //'Fireweed (Chamerion angustifolium)',
+  //'Pacific Rhododendron (Rhododendron macrophyllum)',
+  //'Licorice Fern (Polypodium glycyrrhiza)',
+  //'Coastal Strawberry (Fragaria chiloensis)',
+  //'Inside-Out Flower (Vancouveria hexandra)',
+  //'Ocean Spray (Holodiscus discolor)'
+];
+
+app.post('/api/recommendations', async (req, res) => {
+  const { gardenData } = req.body;
+
+  if (!gardenData) {
+    return res.status(400).json({ error: 'Garden data is required' });
+  }
+
+  const prompt = `
+    Given the following garden conditions:
+    - Location: ${gardenData.location}
+    - Garden Size: ${gardenData.width}m x ${gardenData.height}m
+    - Light: ${gardenData.light}
+    - Exposure: ${gardenData.exposure}
+    - Soil Type: ${gardenData.soilType}
+
+    From the following list of available plants, which ones are most suitable for this garden?
+    Available Plants: ${plantList.join(', ')}.
+
+    Please provide a prioritized, ordered list of the top 5-7 most suitable plants. Format the response as a JSON object with a single key "plantNames" which is an array of strings. For example: { "plantNames": ["Lavender", "Sunflower", "Rose"] }.
+  `;
+
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=${apiKey}`;
+
+    const requestBody = {
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      // Add a generationConfig to be more explicit
+      generationConfig: {
+        "temperature": 0.7,
+        "topP": 1,
+        "topK": 1,
+      }
+    };
+
+    const apiResponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!apiResponse.ok) {
+      const errorBody = await apiResponse.text();
+      console.error("API Error Response:", errorBody);
+      throw new Error(`API request failed with status ${apiResponse.status}`);
+    }
+
+    const data = await apiResponse.json();
+
+    // Extract the text from the REST API's response structure
+    // Add a safety check in case the response is not as expected
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      console.error("Unexpected API response structure:", JSON.stringify(data, null, 2));
+      throw new Error("Could not find generated text in API response.");
+    }
+
+    // Clean the response to be valid JSON
+    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    res.json(JSON.parse(jsonString));
+  } catch (error) {
+    console.error('Error during direct API call:', error);
+    res.status(500).json({ error: 'Failed to get recommendations from Gemini.' });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server listening at http://localhost:${port}`);
+});

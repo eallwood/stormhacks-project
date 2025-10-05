@@ -1,7 +1,9 @@
 import { useState } from 'react';
 
-const DialogueBox = ({ gardenData, setGardenData }) => {
+const DialogueBox = ({ gardenData, setGardenData, setRecommendedPlants }) => {
   const [stage, setStage] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -9,6 +11,35 @@ const DialogueBox = ({ gardenData, setGardenData }) => {
       ...prevData,
       [name]: value,
     }));
+  };
+
+  const handleConfirm = async () => {
+    setIsLoading(true);
+    setApiError('');
+    setRecommendedPlants([]);
+
+    try {
+      const response = await fetch('http://localhost:3001/api/recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gardenData }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch recommendations.');
+      }
+
+      const data = await response.json();
+      setRecommendedPlants(data.plantNames || []);
+      setStage(stage + 1); // Move to the results stage
+    } catch (error) {
+      console.error('API Error:', error);
+      setApiError('Sorry, something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const stages = [
@@ -138,12 +169,33 @@ const DialogueBox = ({ gardenData, setGardenData }) => {
         </div>
       ),
     },
+    {
+      title: 'Your Plant Recommendations',
+      content: (
+        <div>
+          {isLoading && <p>Generating your personalized garden plan...</p>}
+          {apiError && <p className="text-red-500">{apiError}</p>}
+          {!isLoading && !apiError && (
+            <>
+              <p className="mb-4">
+                Success! We've generated a list of recommended plants for your garden.
+              </p>
+              <p>
+                You can see the list in the bottom-left corner and the plants have been added to your 3D garden.
+              </p>
+            </>
+          )}
+        </div>
+      ),
+    },
   ];
 
   const currentStage = stages[stage];
 
   const handleNext = () => {
-    if (stage < stages.length - 1) {
+    if (stage === stages.length - 2) { // The summary stage
+      handleConfirm();
+    } else if (stage < stages.length - 1) {
       setStage(stage + 1);
     }
   };
@@ -171,10 +223,12 @@ const DialogueBox = ({ gardenData, setGardenData }) => {
         </button>
         <button
           onClick={handleNext}
-          disabled={stage === stages.length - 1}
-          className="px-auto py-2 w-full bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isLoading || stage >= stages.length - 1}
+          className={`px-auto py-2 w-full text-white rounded disabled:opacity-50 disabled:cursor-not-allowed ${
+            stage === stages.length - 2 ? 'bg-green-500' : 'bg-blue-500'
+          }`}
         >
-          Next
+          {stage === stages.length - 2 ? (isLoading ? 'Generating...' : 'Confirm') : 'Next'}
         </button>
       </div>
     </div>
