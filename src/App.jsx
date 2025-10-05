@@ -7,20 +7,22 @@ import PlantInfoDisplay from './components/PlantInfoDisplay';
 import ViewToggle from './components/ViewToggle';
 import ChatInterface from './components/ChatInterface';
 import CarbonInfoBox from './components/CarbonInfoBox';
+import CarbonEquivalentBox from './components/CarbonEquivalentBox';
  
 function App() {
   const [gardenData, setGardenData] = useState({
-    width: 8,
-    height: 8,
+    width: 4,
+    height: 4,
     location: 'vancouver',
     light: 'full',
     exposure: 'outside',
-    soilType: 'sandy',
+    soilType: 'loamy',
   });
   const [recommendedPlants, setRecommendedPlants] = useState([]);
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [carbonOffset, setCarbonOffset] = useState(null);
   const [activeView, setActiveView] = useState('planner');
+  const [hoveredPlantName, setHoveredPlantName] = useState(null);
 
   const handleSetRecommendations = (data) => {
     const plants = data?.recommendations || [];
@@ -43,10 +45,12 @@ function App() {
         soilType={gardenData.soilType}
         light={gardenData.light}
         exposure={gardenData.exposure}
-        recommendedPlants={plantNames}
+        recommendedPlants={recommendedPlants}
         selectedPlantName={selectedPlant?.name}
+        onPlantSelect={setSelectedPlant}
+        setHoveredPlantName={setHoveredPlantName}
       />
-      <h1 className='font-[Pressura] text-4xl font-normal absolute top-4 left-[50%] -translate-x-[50%]'>Stormhacks Project</h1>
+      <img src='./src/img/greenprint.png' className='font-[Pressura] text-4xl font-normal absolute top-8 left-[50%] -translate-x-[50%] h-20'/>
 
       {recommendedPlants.length > 0 && (
         <ViewToggle activeView={activeView} setActiveView={setActiveView} />
@@ -57,6 +61,7 @@ function App() {
         <PlantSelector
           plants={recommendedPlants}
           selectedPlant={selectedPlant}
+          hoveredPlantName={hoveredPlantName}
           onPlantSelect={setSelectedPlant}
         />
         <PlantInfoDisplay plant={selectedPlant} />
@@ -77,6 +82,10 @@ function App() {
 
       <div className={`transition-transform duration-500 ease-in-out fixed bottom-5 left-5 ${activeView === 'carbon' ? 'translate-y-0' : 'translate-y-[150%]'}`}>
         <CarbonInfoBox offsetData={carbonOffset} />
+      </div>
+
+      <div className={`transition-transform duration-500 ease-in-out fixed bottom-5 left-[26.5rem] ${activeView === 'carbon' ? 'translate-y-0' : 'translate-y-[150%]'}`}>
+        <CarbonEquivalentBox offsetData={carbonOffset} />
       </div>
     </div>
   )

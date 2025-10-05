@@ -44,8 +44,15 @@ const ChatInterface = ({ recommendedPlants }) => {
 
   return (
     <div className="font-[Pressura] font-normal h-full w-96 bg-white p-4 rounded-lg border border-[#41653D] flex flex-col" onClick={(e) => e.stopPropagation()}>
-      <h2 className="text-xl mb-4 border-b pb-2">Carbon Footprint Chat</h2>
-      <div ref={chatBodyRef} className="flex-grow overflow-y-auto mb-4 space-y-4 pr-2">
+      <h2 className="font-inter text-xl mb-4 border-b pb-2">Ask me anything!</h2>
+      <div ref={chatBodyRef} className="flex-grow overflow-y-auto mb-4 space-y-4 pr-2 relative">
+        {messages.length === 0 && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <p className="text-center text-xs text-gray-400">
+              You can ask the chatbot for more information about the garden recommendations including about its environmental impact or care tips.
+            </p>
+          </div>
+        )}
         {messages.map((msg, index) => (
           <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] p-3 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}>

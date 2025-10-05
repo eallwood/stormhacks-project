@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { useSpring, a } from '@react-spring/three';
 import { OrbitControls, useTexture } from "@react-three/drei";
+import { Color } from 'three';
 
 const soilColors = {
   sandy: '#C2B280', // Sand
@@ -9,6 +11,15 @@ const soilColors = {
   silty: '#9E9E9E',  // Grayish brown
   peaty: '#3B2F2F',  // Very dark brown/black
   chalky: '#EAEAEA', // Light gray/white
+};
+
+const soilTextureMap = {
+  sandy: '/src/img/sandytexture.png',
+  clay: '/src/img/claytexture.png',
+  loamy: '/src/img/loamytexture.png',
+  silty: '/src/img/siltytexture.png',
+  peaty: '/src/img/peatytexture.png',
+  chalky: '/src/img/chalkytexture.png',
 };
 
 const lightingConfig = {
@@ -64,11 +75,12 @@ const plantImageMap = {
   'default': '/src/img/Tall_Grass.webp',
 };
 
-function Tile({ position, soilType, plantName, randomRotation, isSelected }) {
-  const groundColor = soilColors[soilType] || '#4CAF50'; // Default to green
-  const texture = useTexture(plantImageMap[plantName] || plantImageMap['default']);
+function Tile({ position, soilType, plantName, randomRotation, isSelected, setHoveredPlantName, onSelect }) {
+  const plantTexture = useTexture(plantImageMap[plantName] || plantImageMap['default']);
+  const groundTexture = useTexture(soilTextureMap[soilType] || soilTextureMap['loamy']);
   const plantRef = useRef();
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const startTimeRef = useRef(0);
 
   // This effect triggers the animation when a plant is assigned to the tile.
@@ -86,6 +98,12 @@ function Tile({ position, soilType, plantName, randomRotation, isSelected }) {
   // Calculate a delay based on the tile's position to create a wave effect.
   // The wave will move diagonally across the grid.
   const waveDelay = (position[0] + position[2]) * 100; // in milliseconds
+
+  // Spring animation for the hover lift effect
+  const { y } = useSpring({
+    y: isHovered ? 0.25 : 0,
+    config: { mass: 1, tension: 280, friction: 20 },
+  });
 
   useFrame(({ clock }) => {
     if (!plantRef.current) return;
@@ -119,21 +137,37 @@ function Tile({ position, soilType, plantName, randomRotation, isSelected }) {
   });
 
   return (
-    <group position={position}>
+    <group
+      position={position}
+    >
       {/* Ground tile */}
       <mesh rotation-x={-Math.PI / 2}>
         <planeGeometry args={[0.5, 0.5]} />
-        <meshStandardMaterial color={groundColor} />
+        <meshStandardMaterial map={groundTexture} />
+      </mesh>
+
+      {/* Invisible plane for accurate hover/click detection */}
+      <mesh
+        rotation-x={-Math.PI / 2}
+        onPointerEnter={() => { if (plantName) { setHoveredPlantName(plantName); setIsHovered(true); } }}
+        onPointerLeave={() => { if (plantName) { setHoveredPlantName(null); setIsHovered(false); } }}
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent event from bubbling up to OrbitControls
+          if (plantName) onSelect();
+        }}
+      >
+        <planeGeometry args={[0.5, 0.5]} />
+        <meshBasicMaterial visible={false} />
       </mesh>
 
       {/* Crossed plant - only rendered if a plantName exists */}
       {plantName && (
-        <group ref={plantRef} position={[0, 0, 0]} rotation-y={randomRotation} scale={0}>
+        <a.group ref={plantRef} position-y={y} rotation-y={randomRotation} scale={0}>
         {/* Plane 1 */}
         <mesh position={[0, 0.5, 0]}>
           <planeGeometry args={[1, 1]} />
           <meshStandardMaterial
-            map={texture}
+            map={plantTexture}
             transparent
             alphaTest={0.5}
             side={2}
@@ -144,19 +178,19 @@ function Tile({ position, soilType, plantName, randomRotation, isSelected }) {
         <mesh position={[0, 0.5, 0]} rotation-y={Math.PI / 2}>
           <planeGeometry args={[1, 1]} />
           <meshStandardMaterial
-            map={texture}
+            map={plantTexture}
             transparent
             alphaTest={0.5}
             side={2}
           />
         </mesh>
-        </group>
+        </a.group>
       )}
     </group>
   );
 }
 
-function GardenGrid({ width = 8, height = 8, soilType, recommendedPlants, selectedPlantName }) {
+function GardenGrid({ width = 8, height = 8, soilType, recommendedPlants, selectedPlantName, onPlantSelect, setHoveredPlantName }) {
   // Generate grid positions and assign plants
   const positions = useMemo(() => {
     const pos = [];
@@ -166,8 +200,9 @@ function GardenGrid({ width = 8, height = 8, soilType, recommendedPlants, select
 
     if (recommendedPlants && recommendedPlants.length > 0) {
       // Create an evenly distributed list of plants to fill the grid
+      const plantNames = recommendedPlants.map(p => p.name);
       for (let i = 0; i < totalTiles; i++) {
-        plantsToDistribute.push(recommendedPlants[i % recommendedPlants.length]);
+        plantsToDistribute.push(plantNames[i % plantNames.length]);
       }
       // Shuffle the list for a random appearance
       for (let i = plantsToDistribute.length - 1; i > 0; i--) {
@@ -200,13 +235,15 @@ function GardenGrid({ width = 8, height = 8, soilType, recommendedPlants, select
           plantName={tileData.plantName}
           randomRotation={tileData.randomRotation}
           isSelected={tileData.plantName === selectedPlantName}
+          onSelect={() => onPlantSelect(recommendedPlants.find(p => p.name === tileData.plantName))}
+          setHoveredPlantName={setHoveredPlantName}
         />
       ))}
     </>
   );
 }
 
-export default function GardenScene({ width, height, soilType, light, exposure, recommendedPlants, selectedPlantName }) {
+export default function GardenScene({ width, height, soilType, light, exposure, recommendedPlants, selectedPlantName, onPlantSelect, setHoveredPlantName }) {
   const { ambientIntensity, directionalIntensity, directionalPosition } = getLightSettings(light, exposure);
   const tileScale = 0.5;
 
@@ -224,6 +261,8 @@ export default function GardenScene({ width, height, soilType, light, exposure, 
           soilType={soilType}
           recommendedPlants={recommendedPlants}
           selectedPlantName={selectedPlantName}
+          onPlantSelect={onPlantSelect}
+          setHoveredPlantName={setHoveredPlantName}
         />
         <OrbitControls
           target={gridCenter}

@@ -1,9 +1,9 @@
 const ViewToggle = ({ activeView, setActiveView }) => {
   return (
-    <div className="font-[Pressura] font-normal fixed top-5 left-5 bg-white p-1 rounded-lg border border-[#41653D] flex items-center space-x-1 shadow-inner">
+    <div className="fixed top-5 left-5 bg-white p-1 rounded-lg border border-[#41653D] flex items-center space-x-1 shadow-inner font-[pressura]">
       <div
-        className={`absolute top-1 bottom-1 w-1/2 bg-white rounded-lg border border-[#41653D] transition-transform duration-300 ease-in-out ${
-          activeView === 'planner' ? 'translate-x-0' : 'translate-x-[98%]'
+        className={`absolute top-1 bottom-1 w-[calc(50%-0.125rem)] bg-[#DCE775] rounded-lg border border-[#41653D] transition-transform duration-300 ease-in-out ${
+          activeView === 'planner' ? 'translate-x-0' : 'translate-x-[100%]'
         }`}
       />
       <button
@@ -20,7 +20,7 @@ const ViewToggle = ({ activeView, setActiveView }) => {
           activeView === 'carbon' ? 'text-black' : 'text-gray-500'
         }`}
       >
-        Carbon Footprint
+        Other Info
       </button>
     </div>
   );

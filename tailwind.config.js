@@ -7,9 +7,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-          'pressura': ['Pressura', 'sans-serif']
-        }
-      },
+        'pressura': ['Pressura', 'sans-serif'],
+        'inter': ['Inter', 'sans-serif'],
+      }
+    },
   },
   plugins: [],
 }
