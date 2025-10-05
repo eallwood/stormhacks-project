@@ -32,7 +32,7 @@ const DialogueBox = ({ gardenData, setGardenData, setRecommendedPlants }) => {
       }
 
       const data = await response.json();
-      setRecommendedPlants(data.plantNames || []);
+      setRecommendedPlants(data);
       setStage(stage + 1); // Move to the results stage
     } catch (error) {
       console.error('API Error:', error);
@@ -201,6 +201,10 @@ const DialogueBox = ({ gardenData, setGardenData, setRecommendedPlants }) => {
   };
 
   const handleBack = () => {
+    if (stage === stages.length - 1) {
+      // When going back from the final screen, reset the recommendations.
+      setRecommendedPlants(null);
+    }
     if (stage > 0) {
       setStage(stage - 1);
     }
@@ -208,7 +212,7 @@ const DialogueBox = ({ gardenData, setGardenData, setRecommendedPlants }) => {
 
   return (
     <div className="font-[Pressura] font-normal fixed bottom-5 right-5 w-80">
-      <div className='bg-white p-4 rounded-lg shadow-lg border'>
+      <div className='bg-white p-4 rounded-lg border border-[#41653D]'>
         <h2 className=" text-xl mb-2">{currentStage.title}</h2>
         <div>{currentStage.content}</div>
       </div>
@@ -217,19 +221,21 @@ const DialogueBox = ({ gardenData, setGardenData, setRecommendedPlants }) => {
         <button
           onClick={handleBack}
           disabled={stage === 0}
-          className="px-auto py-2 w-full bg-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-auto py-2 w-full bg-white text-[#2F4C2C] rounded disabled:opacity-50 disabled:cursor-not-allowed border border-[#41653D]"
         >
-          Back
+          {stage === stages.length - 1 ? '<- Change Garden Conditions' : 'Back'}
         </button>
-        <button
-          onClick={handleNext}
-          disabled={isLoading || stage >= stages.length - 1}
-          className={`px-auto py-2 w-full text-white rounded disabled:opacity-50 disabled:cursor-not-allowed ${
-            stage === stages.length - 2 ? 'bg-green-500' : 'bg-blue-500'
-          }`}
-        >
-          {stage === stages.length - 2 ? (isLoading ? 'Generating...' : 'Confirm') : 'Next'}
-        </button>
+        {stage < stages.length - 1 && (
+          <button
+            onClick={handleNext}
+            disabled={isLoading}
+            className={`px-auto py-2 w-full text-[#2F4C2C] rounded border border-[#41653D] disabled:opacity-50 disabled:cursor-not-allowed ${
+              stage === stages.length - 2 ? 'bg-[#DCE775]' : 'bg-[#DCE775]'
+            }`}
+          >
+            {stage === stages.length - 2 ? (isLoading ? 'Generating...' : 'Confirm') : 'Next'}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -50,21 +50,21 @@ const plantImageMap = {
   'Lupine (Lupinus polyphyllus)': '/src/img/Tall_Grass.webp',
   'Red Flowering Currant (Ribes sanguineum)': '/src/img/Tall_Grass.webp',
   'Bleeding Heart Vine (Clerodendrum thomsoniae)': '/src/img/Tall_Grass.webp',
-  'Ferns (Athyrium filix-femina)': '/src/img/Tall_Grass.webp',
+  'Ferns (Athyrium filix-femina)': '/src/img/Fern.png',
   'Camassia (Camassia quamash)': '/src/img/Tall_Grass.webp',
-  'Vanilla Leaf (Achlys triphylla)': '/src/img/Tall_Grass.webp',
+  'Vanilla Leaf (Achlys triphylla)': '/src/img/VanillaLeaf.png',
   'Indian Plum (Oemleria cerasiformis)': '/src/img/Tall_Grass.webp',
   'Twinflower (Linnaea borealis)': '/src/img/Tall_Grass.webp',
-  'Fireweed (Chamerion angustifolium)': '/src/img/Tall_Grass.webp',
-  'Pacific Rhododendron (Rhododendron macrophyllum)': '/src/img/Tall_Grass.webp',
+  'Fireweed (Chamerion angustifolium)': '/src/img/FireWeed.png',
+  'Pacific Rhododendron (Rhododendron macrophyllum)': '/src/img/PacificRhododendron.png',
   'Licorice Fern (Polypodium glycyrrhiza)': '/src/img/Tall_Grass.webp',
   'Coastal Strawberry (Fragaria chiloensis)': '/src/img/Tall_Grass.webp',
-  'Inside-Out Flower (Vancouveria hexandra)': '/src/img/Tall_Grass.webp',
+  'Inside-Out Flower (Vancouveria hexandra)': '/src/img/InsideOutFlower.png',
   'Ocean Spray (Holodiscus discolor)': '/src/img/Tall_Grass.webp',
   'default': '/src/img/Tall_Grass.webp',
 };
 
-function Tile({ position, soilType, plantName, randomRotation }) {
+function Tile({ position, soilType, plantName, randomRotation, isSelected }) {
   const groundColor = soilColors[soilType] || '#4CAF50'; // Default to green
   const texture = useTexture(plantImageMap[plantName] || plantImageMap['default']);
   const plantRef = useRef();
@@ -156,7 +156,7 @@ function Tile({ position, soilType, plantName, randomRotation }) {
   );
 }
 
-function GardenGrid({ width = 8, height = 8, soilType, recommendedPlants }) {
+function GardenGrid({ width = 8, height = 8, soilType, recommendedPlants, selectedPlantName }) {
   // Generate grid positions and assign plants
   const positions = useMemo(() => {
     const pos = [];
@@ -198,23 +198,36 @@ function GardenGrid({ width = 8, height = 8, soilType, recommendedPlants }) {
           position={tileData.position}
           soilType={soilType}
           plantName={tileData.plantName}
-          randomRotation={tileData.randomRotation} />
+          randomRotation={tileData.randomRotation}
+          isSelected={tileData.plantName === selectedPlantName}
+        />
       ))}
     </>
   );
 }
 
-export default function GardenScene({ width, height, soilType, light, exposure, recommendedPlants }) {
+export default function GardenScene({ width, height, soilType, light, exposure, recommendedPlants, selectedPlantName }) {
   const { ambientIntensity, directionalIntensity, directionalPosition } = getLightSettings(light, exposure);
+  const tileScale = 0.5;
+
+  // Calculate the true center of the grid for the camera to pivot around
+  const gridCenter = useMemo(() => [((width / tileScale) % 2 === 0 ? -tileScale / 2 : 0), 0, ((height / tileScale) % 2 === 0 ? -tileScale / 2 : 0)], [width, height]);
 
   return (
-    <div className="w-full h-screen bg-white">
+    <div className="w-full h-screen bg-[#F9FBE7]">
       <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
         <ambientLight intensity={ambientIntensity} />
         <directionalLight position={directionalPosition} intensity={directionalIntensity} />
-        <GardenGrid width={width} height={height} soilType={soilType} recommendedPlants={recommendedPlants} />
+        <GardenGrid
+          width={width}
+          height={height}
+          soilType={soilType}
+          recommendedPlants={recommendedPlants}
+          selectedPlantName={selectedPlantName}
+        />
         <OrbitControls
-          minPolarAngle={Math.PI / 4} // 30 degrees from vertical
+          target={gridCenter}
+          minPolarAngle={Math.PI / 6} // 30 degrees from vertical
           maxPolarAngle={4 * Math.PI / 9} // 80 degrees from vertical
         />
       </Canvas>

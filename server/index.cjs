@@ -39,16 +39,16 @@ const plantList = [
   //'Lupine (Lupinus polyphyllus)',
   //'Red Flowering Currant (Ribes sanguineum)',
   //'Bleeding Heart Vine (Clerodendrum thomsoniae)',
-  //'Ferns (Athyrium filix-femina)',
+  'Ferns (Athyrium filix-femina)',
   //'Camassia (Camassia quamash)',
-  //'Vanilla Leaf (Achlys triphylla)',
+  'Vanilla Leaf (Achlys triphylla)',
   //'Indian Plum (Oemleria cerasiformis)',
   //'Twinflower (Linnaea borealis)',
-  //'Fireweed (Chamerion angustifolium)',
-  //'Pacific Rhododendron (Rhododendron macrophyllum)',
+  'Fireweed (Chamerion angustifolium)',
+  'Pacific Rhododendron (Rhododendron macrophyllum)',
   //'Licorice Fern (Polypodium glycyrrhiza)',
   //'Coastal Strawberry (Fragaria chiloensis)',
-  //'Inside-Out Flower (Vancouveria hexandra)',
+  'Inside-Out Flower (Vancouveria hexandra)',
   //'Ocean Spray (Holodiscus discolor)'
 ];
 
@@ -70,7 +70,7 @@ app.post('/api/recommendations', async (req, res) => {
     From the following list of available plants, which ones are most suitable for this garden?
     Available Plants: ${plantList.join(', ')}.
 
-    Please provide a prioritized, ordered list of the top 5-7 most suitable plants. Format the response as a JSON object with a single key "plantNames" which is an array of strings. For example: { "plantNames": ["Lavender", "Sunflower", "Rose"] }.
+    Please provide a prioritized, ordered list of the top 5-7 most suitable plants. For each plant, provide a short, one-sentence description. Also, provide an estimated annual carbon offset in kilograms for a garden of the specified size filled with these plants, along with a brief explanation. Format the response as a JSON object with two keys: "recommendations" (an array of objects with "name" and "description") and "carbonOffset" (an object with "value" as a number and "explanation" as a string). For example: { "recommendations": [...], "carbonOffset": { "value": 15.5, "explanation": "This estimate is based on..." } }.
   `;
 
   try {
@@ -120,6 +120,58 @@ app.post('/api/recommendations', async (req, res) => {
   } catch (error) {
     console.error('Error during direct API call:', error);
     res.status(500).json({ error: 'Failed to get recommendations from Gemini.' });
+  }
+});
+
+app.post('/api/chat', async (req, res) => {
+  const { message, context } = req.body;
+
+  if (!message || !context) {
+    return res.status(400).json({ error: 'A message and plant context are required.' });
+  }
+
+  const plantContext = context.map(p => p.name).join(', ');
+
+  const prompt = `
+    You are a helpful and friendly gardening assistant.
+    The user's garden contains the following plants: ${plantContext}.
+    Based on this context, answer the user's question concisely.
+    User's question: "${message}"
+  `;
+
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=${apiKey}`;
+
+    const requestBody = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        "temperature": 0.7,
+        "topP": 1,
+        "topK": 1,
+      }
+    };
+
+    const apiResponse = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!apiResponse.ok) {
+      const errorBody = await apiResponse.text();
+      console.error("API Error Response:", errorBody);
+      throw new Error(`API request failed with status ${apiResponse.status}`);
+    }
+
+    const data = await apiResponse.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    res.json({ reply: text || "Sorry, I couldn't generate a response." });
+
+  } catch (error) {
+    console.error('Error during chat API call:', error);
+    res.status(500).json({ error: 'Failed to get a response from the assistant.' });
   }
 });
 
