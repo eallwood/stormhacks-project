@@ -58,7 +58,7 @@ const DialogueBox = ({ gardenData, setGardenData, setRecommendedPlants }) => {
 
   const stages = [
     {
-      title: 'Welcome to Greenprints!',
+      title: 'Welcome to Greenprint!',
       content: (
         <p className="text-sm">
           Answer a few questions about your garden space, and we'll generate a
